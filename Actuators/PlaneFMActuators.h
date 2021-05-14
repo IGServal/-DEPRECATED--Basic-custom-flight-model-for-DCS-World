@@ -46,15 +46,15 @@ namespace PlaneFM
 			return elevatorPosition_DEG;
 		}
 
-		double  aileron_actuator(double aileronCommanded_DEG, double frameTime)
+		double  aileron_actuator(double roll_cmd, double frameTime)
 		{
 			if (!simInitialized)
 			{
-				aileronPosition_DEG = aileronCommanded_DEG;
+				aileronPosition_DEG = roll_cmd;
 				return aileronPosition_DEG;
 			}
 
-			aileronRate_DEGPERSEC = 15.0 * (aileronCommanded_DEG - aileronPosition_DEG);
+			aileronRate_DEGPERSEC = 15.0 * (roll_cmd - aileronPosition_DEG);
 
 			aileronRate_DEGPERSEC = limit(aileronRate_DEGPERSEC, -20.0, 20.0);
 
