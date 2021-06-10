@@ -71,14 +71,22 @@ enum InputCommands
 	JoystickThrottle = 2004,
 
 	// modes
-	nav		= 105,
-	bvr		= 106,
-	vs		= 107,
+	nav	= 105,
+	bvr	= 106,
+	vs	= 107,
 	bore	= 108,
 	helm	= 109,
-	fi0		= 110,
-	a2g		= 111,
-	gun		= 113,
+	fi0	= 110,
+	a2g	= 111,
+	gun	= 113,
+
+	// autopilot modes
+	//autopilot = 62, // [A]
+	//route_follow = 429,// [Left alt + 6] 
+	autopilot_horiz = 62,  // [A]
+	autopilot_alt = 59,  // [H]
+	autopilot_alt_roll = 387,  // [Left alt + 6]
+	autopilot_reset = 408,  // [Left alt + 9]
 
 	Reserved // placeholder
 };
