@@ -1,31 +1,23 @@
 #pragma once
-
+// This file details what happens when various options in DCS are set on or off.
 class param_stuff
 {
 protected:
-	//bool testvalue;
 
 public:
 	bool fuelvalue;
-	double fuelnumber;
-
-	/*test_stuff()
-		: testvalue()
-		, testnumber()
-	{}
-	~test_stuff() {}*/
 	
 	void fuelparam(bool value)
 	{
 		fuelvalue = value;
-		/*if (testvalue = true)
-		{
-			testnumber = 1.5;
-		}
-		if (testvalue = false)
-		{
-			testnumber = 0.001;
-		}*/
+	};
+
+
+	bool invincible_value;
+
+	void invincible(bool value)
+	{
+		invincible_value = value;
 	};
 
 
