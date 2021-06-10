@@ -64,8 +64,6 @@
 #include "Aerodynamics/PlaneFMAero.h"				//Aerodynamic model functions
 #include "FlightControls/FlightControls.h"	//Flight Controls model functions
 #include "Engine/PlaneFMEngine.h"					//Engine model functions
-#include "Airframe.h"			// Airframe and structure stuff 
-#include "Engine/FuelSystem.h"
 #include "param_functions.h"
 
 using namespace PlaneFM;
@@ -185,9 +183,7 @@ namespace PlaneFM // I tried to convert the imperial units to metric, but it res
 	double		external_fuel;
 	
 	EDPARAM cockpitAPI;
-	fuelsystem FUEL;
 	param_stuff param_class;
-	Airframe AIRFRAME;
 }
 
 // Very important! This function sum up all the forces acting on
