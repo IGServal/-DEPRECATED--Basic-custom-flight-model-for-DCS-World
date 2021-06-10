@@ -1,7 +1,7 @@
 //--------------------------------------------------------------------------
 // External Flight Model for DCS World
 // 
-// Author: Aiyke/ Sérvalpilot
+// Author: Aiyke/ SÃ©rvalpilot
 // Original author: CptSmiley 
 // You can get the original source code at https://forums.eagle.ru/topic/79927-high-fidelity-flight-dynamics-and-techacademic-initial-demonstration/
 //
@@ -64,6 +64,7 @@
 #include "Aerodynamics/PlaneFMAero.h"				//Aerodynamic model functions
 #include "FlightControls/FlightControls.h"	//Flight Controls model functions
 #include "Engine/PlaneFMEngine.h"					//Engine model functions
+#include "Airframe.h"			// Airframe and structure stuff 
 #include "Engine/FuelSystem.h"
 #include "param_functions.h"
 
@@ -108,6 +109,7 @@ namespace PlaneFM // I tried to convert the imperial units to metric, but it res
 	double		inertia_Iy_KGM2			= 75673.6;		// Reference moment of inertia (kg/m^2)
 	double		inertia_Iz_KGM2			= 85552.1;		// Reference moment of inertia (kg/m^2)
 	double		temp[9];								// Temporary array for holding look-up table results
+	double		altitude_m				= 0.0;			// Absolute altitude above sea level (metres)
 	double		altitude_FT				= 0.0;			// Absolute altitude above sea level (ft)
 	double		totalVelocity_FPS		= 0.0;			// Total velocity (always positive) (ft/s)
 	double		alpha_DEG				= 0.0;			// Angle of attack (deg)
@@ -116,10 +118,6 @@ namespace PlaneFM // I tried to convert the imperial units to metric, but it res
 	double		pitchRate_RPS			= 0.0;			// Body pitch rate (rad/sec)
 	double		yawRate_RPS				= 0.0;			// Body yaw rate (rad/sec)
 	double		thrust_N				= 0.0;			// Engine thrust (Newtons)
-
-	double Yaw = 0.0;
-	double Pitch = 0.0;
-	double Roll = 0.0;
 
 	double		elevator_DEG			= 0.0;			// Elevator deflection (deg)
 	double		aileron_DEG				= 0.0;			// Aileron deflection (deg)
@@ -148,25 +146,13 @@ namespace PlaneFM // I tried to convert the imperial units to metric, but it res
 	double		ps_LBFT2				= 0.0;			// Ambient calculated pressure (lb/ft^2)
 	bool		simInitialized			= false;		// Has the simulation gone through it's first run frame?
 	double		gearDown				= 0.0;			// Is the gear currently down?
-	double		az						= 0.0;			// Az (per normal direction convention) out the bottom of the a/c (m/s^2)
+	double		az						= 0.0;			// This is the G force felt by the pilot, acting out the bottom of the aircraft (m/s^2), 1 is Earth's gravity.
 	double		ay						= 0.0;			// Ay (per normal direction convention) out the right wing (m/s^2)
 	double		weight_N				= 0.0;			// Weight force of aircraft (N)
 	double		ay_world				= 0.0;			// World referenced up/down acceleration (m/s^2)
 	double		weight_on_wheels		= 0.0;			// Weight on wheels flag (not used right now)
 
-	double dotX = 0.0;	// These are supposedly angular acceleration in each axis.
-	double dotY = 0.0;	// Units are in metres per second squared.
-	double dotZ = 0.0;
-
-	double fulcrumX = 0.0;	// These are angular velocity in each axis.
-	double fulcrumXY = 0.0;	// Units are in metres per second squared.
-	double fulcrumXZ = 0.0;
-
-	double velX = 0.0;	// These are supposedly velocity in each axis
-	double velY = 0.0;	// Units are in metres per second.
-	double velZ = 0.0;  // ~330 m/s is the speed of sound at sea level.
-
-	double		rolling_friction		= 0.05;			// Wheel friction amount, I don't know what units. I don't know what this is exactly.
+	double		rolling_friction		= 0.015;			// Wheel friction amount, I don't know what units. I don't know what this is exactly.
 	double		WheelBrakeCommand		= 0.0;			// Commanded wheel brake
 	double		GearCommand				= 0.0;			// Commanded gear lever
 	double		airbrake_command		= 0.0;			// Air brakes/spoiler command
@@ -176,6 +162,21 @@ namespace PlaneFM // I tried to convert the imperial units to metric, but it res
 	float		rudder_pos				= 0.0;			//Rudder(s) deflection
 	float		misc_cmd				= 0.0;			//Misc actuator command either for tail hooks or weapon bays (F-22, Su-57, etc.)
 	float		misc_state				= 0.0;
+
+	double engine_damage = 0;			// Combined left and right engine damage
+	double Lwing_damage = 0;			// Left wing damage
+	double Rwing_damage = 0;			// Right wing damage
+	double wing_damage = (Rwing_damage + Lwing_damage); // Combined wing damage
+	double tail_damage = 0;				// Tail(s) and rudder(s) damage
+	double cockpit_damage = 0;			// Cockpit avionics damage	
+
+	double		pitch_angle = 0.0;		// Pitch angle relateive to the horizon in degrees, -90 to +90.
+	double		roll_angle = 0.0;		// Roll angle relateive to the horizon in degrees, -90 to +90.
+	double		vspeed = 0.0;			// Vertical speed in metres per second.
+
+	int			alt_hold = 0;			// Altitude hold
+	int			altroll_hold = 0;		// Altitude and bank hold
+	int			horiz_hold = 0;			// Horizon hold
 	
 	double		DeltaTime				= 0.0;			// Delta time of the simulation, in seconds.
 	bool		engineswitch			= true;			// Is the engine(s) on? If there are two engines they are treated as one.
@@ -186,6 +187,7 @@ namespace PlaneFM // I tried to convert the imperial units to metric, but it res
 	EDPARAM cockpitAPI;
 	fuelsystem FUEL;
 	param_stuff param_class;
+	Airframe AIRFRAME;
 }
 
 // Very important! This function sum up all the forces acting on
@@ -212,7 +214,7 @@ void add_local_moment(const Vec3 & Moment)
 void simulate_fuel_consumption(double dt) // This doesn't seem to work. 
 
 {
-	PlaneFM::fuel_consumption_since_last_time =  10 * (PlaneFM::throttleInput * 1000) * dt; //10 kg persecond
+	PlaneFM::fuel_consumption_since_last_time =  10 * (PlaneFM::throttleInput * 1000) * engine_damage * dt; //10 kg persecond
 		if (PlaneFM::fuel_consumption_since_last_time > internal_fuel)
 			PlaneFM::fuel_consumption_since_last_time = internal_fuel;
 		internal_fuel -= PlaneFM::fuel_consumption_since_last_time +10 +(10* throttleInput);
@@ -302,6 +304,35 @@ void ed_fm_simulate(double dt)
 	//---------------------------------------------
 	//-----CONTROL DYNAMICS------------------------
 	//---------------------------------------------
+	// 
+
+	// Autopilot
+	if (cockpit_damage < 1)
+	{
+		if (alt_hold == 1) // Hold altitude
+		{
+			pitchTrim = limit((vspeed), -10, 10); // FIX ALTITUDE HOLD!!
+		};
+
+		if (altroll_hold == 1) // Keep level and altitude
+		{
+			pitchTrim = limit((vspeed), -10, 10);
+			rollTrim = roll_angle / 10;
+		}
+
+		if (horiz_hold == 1) // Keep level to the horizon
+		{
+			pitchTrim = (pitch_angle * 2);
+			rollTrim = roll_angle / 10;
+		}
+	}
+	if (cockpit_damage > 1)
+	{
+		PlaneFM::engine_damage = 0;
+		PlaneFM::Lwing_damage = 0;
+		PlaneFM::Rwing_damage = 0;
+		PlaneFM::tail_damage = 0;
+	}
 
 	//	Fuel system
 
@@ -338,7 +369,8 @@ void ed_fm_simulate(double dt)
 		PlaneFM::elevator_DEG = limit(PlaneFM::elevator_DEG, -25.0, (15.0 / aoa_filter));
 	}
 
-	roll_filter = (((rollRate_RPS * rollRate_RPS) * 6) / 4 * 5 + 0.5);
+	//roll_filter = (((rollRate_RPS * rollRate_RPS) / 2) / 4 * 5 + 0.5);
+	roll_filter = ((rollRate_RPS * rollRate_RPS) *100)+0.1;
 
 	PlaneFM::aileron_DEG_commanded = (PlaneFM::FLIGHTCONTROLS::fcs_roll_controller(PlaneFM::FLIGHTCONTROLS::latStickInput, PlaneFM::FLIGHTCONTROLS::longStickForce, PlaneFM::ay / 9.81, PlaneFM::rollRate_RPS * PlaneFM::radiansToDegrees, 0.0, PlaneFM::dynamicPressure_LBFT2, dt));
 	PlaneFM::aileron_DEG = PlaneFM::aileron_DEG_commanded + PlaneFM::rollTrim; //PlaneFM::ACTUATORS::aileron_actuator(PlaneFM::aileron_DEG_commanded,dt);
@@ -353,11 +385,9 @@ void ed_fm_simulate(double dt)
 
 		PlaneFM::flap_DEG = PlaneFM::FLIGHTCONTROLS::fcs_flap_controller(PlaneFM::totalVelocity_FPS);
 
-		PlaneFM::throttle_state = PlaneFM::ACTUATORS::throttle_actuator(PlaneFM::throttleInput, dt);
-
 		PlaneFM::elev_pos = PlaneFM::ACTUATORS::elev_actuator(PlaneFM::FLIGHTCONTROLS::longStickInput / aoa_filter + (PlaneFM::pitchTrim / 15), dt);
 
-		PlaneFM::rudder_pos = PlaneFM::ACTUATORS::rudder_actuator(PlaneFM::pedInput, dt);
+		PlaneFM::rudder_pos = PlaneFM::ACTUATORS::rudder_actuator(PlaneFM::pedInput, dt) / (1+tail_damage);
 
 		PlaneFM::gearDown = PlaneFM::ACTUATORS::gear_actuator(PlaneFM::GearCommand, dt);
 
@@ -367,19 +397,22 @@ void ed_fm_simulate(double dt)
 
 		PlaneFM::misc_state = PlaneFM::ACTUATORS::misc_actuator(PlaneFM::misc_cmd, dt);
 
-		if (PlaneFM::throttleInput <= 54.9 /*|| PlaneFM::gearDown <= 0.25*/) //This is to make sure the plane holds still while at idle on the ground.
+		//Throttle and thrust
+		PlaneFM::throttle_state = PlaneFM::ACTUATORS::throttle_actuator(PlaneFM::throttleInput / (1 + engine_damage), dt);
+
+		if (PlaneFM::throttleInput <= 54.9) //This is to make sure the plane holds still while at idle on the ground.
 		{
-			PlaneFM::thrust_N = PlaneFM::ENGINE::engine_dynamics((PlaneFM::throttleInput - 25), PlaneFM::mach, PlaneFM::altitude_FT, dt) / 1.1;
+			PlaneFM::thrust_N = PlaneFM::ENGINE::engine_dynamics((PlaneFM::throttleInput - 25), PlaneFM::mach, PlaneFM::altitude_FT, dt) / 1.2;
 		}
 
 		if (PlaneFM::throttle_state > 55.0 && PlaneFM::throttle_state < 74.9)
 		{
-			PlaneFM::thrust_N = PlaneFM::ENGINE::engine_dynamics((PlaneFM::throttleInput - 25) - 25, PlaneFM::mach, PlaneFM::altitude_FT, dt) / 1.01;
+			PlaneFM::thrust_N = PlaneFM::ENGINE::engine_dynamics((PlaneFM::throttleInput - 25) - 25, PlaneFM::mach, PlaneFM::altitude_FT, dt);
 		}
 
 		if (PlaneFM::throttle_state > 75.0 && PlaneFM::throttle_state < 89.9)
 		{
-			PlaneFM::thrust_N = PlaneFM::ENGINE::engine_dynamics((PlaneFM::throttleInput - 25), PlaneFM::mach, PlaneFM::altitude_FT, dt) * 1.25;
+			PlaneFM::thrust_N = PlaneFM::ENGINE::engine_dynamics((PlaneFM::throttleInput - 25), PlaneFM::mach, PlaneFM::altitude_FT, dt) * 1.15;
 		}
 
 		if (PlaneFM::throttle_state >= 90.0 && PlaneFM::gearDown >= 0.25) // I can't think of a better way of getting ground acceleration more realistic.
@@ -389,26 +422,33 @@ void ed_fm_simulate(double dt)
 
 		if (PlaneFM::throttle_state >= 90.0 && PlaneFM::gearDown <= 0.26) //simulating the increased thrust from afterburners.
 		{
-			PlaneFM::thrust_N = PlaneFM::ENGINE::engine_dynamics(PlaneFM::throttleInput, PlaneFM::mach, PlaneFM::altitude_FT, dt) * 1.3;
+			PlaneFM::thrust_N = PlaneFM::ENGINE::engine_dynamics(PlaneFM::throttleInput, PlaneFM::mach, PlaneFM::altitude_FT, dt) * 1.25;
 		}
 		if (PlaneFM::throttle_state >= 95.0 && PlaneFM::gearDown <= 0.26) //simulating the increased thrust from afterburners.
 		{
-			PlaneFM::thrust_N = PlaneFM::ENGINE::engine_dynamics(PlaneFM::throttleInput, PlaneFM::mach, PlaneFM::altitude_FT, dt) * 1.35;
+			PlaneFM::thrust_N = PlaneFM::ENGINE::engine_dynamics(PlaneFM::throttleInput, PlaneFM::mach, PlaneFM::altitude_FT, dt) * 1.5;
 		}
 		if (PlaneFM::internal_fuel < 5.0)
 		{
 			PlaneFM::thrust_N = 0;
 		}
-		PlaneFM::aileron_PCT = PlaneFM::aileron_DEG / 25.5;
+		if (PlaneFM::engine_damage > 5.0)
+		{
+			PlaneFM::thrust_N = 0;
+		}
+
+		PlaneFM::aileron_PCT = (PlaneFM::aileron_DEG + ((Lwing_damage * 18) + (Rwing_damage * 20))) / (25.5 + wing_damage);
 		PlaneFM::elevator_PCT = PlaneFM::elevator_DEG / 25.0;
-		PlaneFM::rudder_PCT = PlaneFM::rudder_DEG / 30.0;
+		PlaneFM::rudder_PCT = (PlaneFM::rudder_DEG - (tail_damage)) / (30.0 + (tail_damage*10));
 		PlaneFM::flap_PCT = PlaneFM::flap_DEG / 20.0;
+
+		// Aerodynamics stuff
 
 		double alpha1_DEG_Limited = limit(PlaneFM::alpha_DEG, -20.0, 90.0);
 		double beta1_DEG_Limited = limit(PlaneFM::beta_DEG, -30.0, 30.0);
 
 		// FLAPS (From JBSim PlaneFM.xml config)
-		double CLFlaps = 0.25 * PlaneFM::ACTUATORS::flapPosition_DEG;
+		double CLFlaps = 0.20 * PlaneFM::ACTUATORS::flapPosition_DEG;
 		double CDFlaps = 0.08 * PlaneFM::ACTUATORS::flapPosition_DEG;
 
 		double CzFlaps = -(CLFlaps * cos(PlaneFM::alpha_DEG * (PlaneFM::pi / 180.0)) + CDFlaps * sin(PlaneFM::pi / 180.0));
@@ -419,14 +459,18 @@ void ed_fm_simulate(double dt)
 		double Cxbrakes = -(CDbrakes * cos(PlaneFM::pi / 180.0));
 
 		// Gear aero
-		double CDGear = 0.027 * PlaneFM::gearDown * 1.125;
+		//double CDGear = 0.027 * PlaneFM::gearDown * 1.125;
+		double CDGear = 0.027 * PlaneFM::gearDown * 1.5;
 		double CzGear = -(CDGear * sin(PlaneFM::pi / 180.0));
 		double CxGear = -(CDGear * cos(PlaneFM::pi / 180.0));
-
+		if (mach < 0.5)
+		{
+			CxGear *= 2;
+		};
 		//When multiplied, these act a bit like limiters and dampers sometimes.
 
 		PlaneFM::AERO::hifi_C(alpha1_DEG_Limited, beta1_DEG_Limited, PlaneFM::elevator_DEG, temp);
-		PlaneFM::AERO::Cx = temp[0]; // I think this is drag when AOA is low.
+		PlaneFM::AERO::Cx = temp[0] * 1+(wing_damage); // I think this is drag when AOA is low.
 		PlaneFM::AERO::Cz = temp[1]; // This is related to pitch.
 		PlaneFM::AERO::Cm = temp[2]; // This is related to lift, I think.
 		PlaneFM::AERO::Cy = temp[3]; // I have no idea what this does.
@@ -437,16 +481,17 @@ void ed_fm_simulate(double dt)
 		PlaneFM::AERO::Cxq = temp[0]; // This one's weird. It seems to turn angular momentum into speed.
 		PlaneFM::AERO::Cyr = temp[1]; // I don't know what this does...
 		PlaneFM::AERO::Cyp = temp[2]; // I think this has something to do with yaw and speed.
-		if (alpha_DEG > 0.01)
+		if (alpha_DEG > 0.01 || Lwing_damage < 2 || Rwing_damage < 2)
 		{					// This might be a "brute force" approach to stability, but I couldn't get anything else to work.
 			PlaneFM::AERO::Czq = temp[3] * limit(((((alpha_DEG * alpha_DEG) / 12) + 1) * mach), 1, 10);
 		}
-		else 
+		else
 		PlaneFM::AERO::Czq = temp[3]; // This is related to lift (force up from the dorsal side)
 		PlaneFM::AERO::Clr = temp[4]; // I think this is roll?
 		PlaneFM::AERO::Clp = temp[5]; // This also has something to with roll multplying is less movement
 		PlaneFM::AERO::Cmq = temp[6]; // This is pitch moment damping basically.
-		PlaneFM::AERO::Cnr = temp[7] * ((beta_DEG * beta_DEG)/10); // I don't know what this does...
+		//PlaneFM::AERO::Cnr = temp[7] * ((beta_DEG * beta_DEG)/10); // I'm not really sure what this does...
+		PlaneFM::AERO::Cnr = temp[7]; // I'm not really sure what this does...
 		PlaneFM::AERO::Cnp = temp[8]; // This seems to translate roll into yaw.
 
 		PlaneFM::AERO::hifi_C_lef(alpha1_DEG_Limited, beta1_DEG_Limited, temp);//What does this do?
@@ -471,7 +516,7 @@ void ed_fm_simulate(double dt)
 		PlaneFM::AERO::hifi_rudder(alpha1_DEG_Limited, beta1_DEG_Limited, temp);
 		PlaneFM::AERO::Cy_delta_r30 = temp[0];
 		PlaneFM::AERO::Cn_delta_r30 = temp[1]; // This seems to be the damping effect 
-		PlaneFM::AERO::Cl_delta_r30 = temp[2] * 1.25; // This seems to translate yaw into roll
+		PlaneFM::AERO::Cl_delta_r30 = temp[2] * 1.2; // This seems to translate yaw into roll
 
 		PlaneFM::AERO::hifi_ailerons(alpha1_DEG_Limited, beta1_DEG_Limited, temp);
 		PlaneFM::AERO::Cy_delta_a20 = temp[0];
@@ -500,20 +545,17 @@ void ed_fm_simulate(double dt)
 		PlaneFM::AERO::Cx_total += CxFlaps + CxGear + Cxbrakes;
 
 		/* ZZZZZZZZ Cz_tot ZZZZZZZZ */
-		// Cz is 
 		PlaneFM::AERO::dZdQ = (PlaneFM::meanChord_FT / (2 * PlaneFM::totalVelocity_FPS)) * (PlaneFM::AERO::Czq + PlaneFM::AERO::Cz_delta_lef * PlaneFM::leadingEdgeFlap_PCT);
 
 		PlaneFM::AERO::Cz_total = PlaneFM::AERO::Cz + PlaneFM::AERO::Cz_delta_lef * PlaneFM::leadingEdgeFlap_PCT + PlaneFM::AERO::dZdQ * PlaneFM::pitchRate_RPS;
 		PlaneFM::AERO::Cz_total += CzFlaps + CzGear;
 
 		/* MMMMMMMM Cm_tot MMMMMMMM */
-		// Cm is 
 		PlaneFM::AERO::dMdQ = (PlaneFM::meanChord_FT / (2 * PlaneFM::totalVelocity_FPS)) * (PlaneFM::AERO::Cmq + PlaneFM::AERO::Cmq_delta_lef * PlaneFM::leadingEdgeFlap_PCT);
 
 		PlaneFM::AERO::Cm_total = PlaneFM::AERO::Cm * PlaneFM::AERO::eta_el + PlaneFM::AERO::Cz_total * (PlaneFM::referenceCG_PCT - PlaneFM::actualCG_PCT) + PlaneFM::AERO::Cm_delta_lef * PlaneFM::leadingEdgeFlap_PCT + PlaneFM::AERO::dMdQ * PlaneFM::pitchRate_RPS + PlaneFM::AERO::Cm_delta + PlaneFM::AERO::Cm_delta_ds;
 
 		/* YYYYYYYY Cy_tot YYYYYYYY */
-		// Cy is
 		PlaneFM::AERO::dYdail = PlaneFM::AERO::Cy_delta_a20 + PlaneFM::AERO::Cy_delta_a20_lef * PlaneFM::leadingEdgeFlap_PCT;
 
 		PlaneFM::AERO::dYdR = (PlaneFM::wingSpan_FT / (2 * PlaneFM::totalVelocity_FPS)) * (PlaneFM::AERO::Cyr + PlaneFM::AERO::Cyr_delta_lef * PlaneFM::leadingEdgeFlap_PCT);
@@ -523,7 +565,6 @@ void ed_fm_simulate(double dt)
 		PlaneFM::AERO::Cy_total = PlaneFM::AERO::Cy + PlaneFM::AERO::Cy_delta_lef * PlaneFM::leadingEdgeFlap_PCT + PlaneFM::AERO::dYdail * PlaneFM::aileron_PCT + PlaneFM::AERO::Cy_delta_r30 * PlaneFM::rudder_PCT + PlaneFM::AERO::dYdR * PlaneFM::yawRate_RPS + PlaneFM::AERO::dYdP * PlaneFM::rollRate_RPS;
 
 		/* NNNNNNNN Cn_tot NNNNNNNN */
-		// Cn is 
 		PlaneFM::AERO::dNdail = PlaneFM::AERO::Cn_delta_a20 + PlaneFM::AERO::Cn_delta_a20_lef * PlaneFM::leadingEdgeFlap_PCT;
 
 		PlaneFM::AERO::dNdR = (PlaneFM::wingSpan_FT / (2 * PlaneFM::totalVelocity_FPS)) * (PlaneFM::AERO::Cnr + PlaneFM::AERO::Cnr_delta_lef * PlaneFM::leadingEdgeFlap_PCT);
@@ -533,7 +574,7 @@ void ed_fm_simulate(double dt)
 		PlaneFM::AERO::Cn_total = PlaneFM::AERO::Cn + PlaneFM::AERO::Cn_delta_lef * PlaneFM::leadingEdgeFlap_PCT - PlaneFM::AERO::Cy_total * (PlaneFM::referenceCG_PCT - PlaneFM::actualCG_PCT) * (PlaneFM::meanChord_FT / PlaneFM::wingSpan_FT) + PlaneFM::AERO::dNdail * PlaneFM::aileron_PCT + PlaneFM::AERO::Cn_delta_r30 * PlaneFM::rudder_PCT + PlaneFM::AERO::dNdR * PlaneFM::yawRate_RPS + PlaneFM::AERO::dNdP * PlaneFM::rollRate_RPS + PlaneFM::AERO::Cn_delta_beta * PlaneFM::beta_DEG;
 
 		/* LLLLLLLL Cl_total LLLLLLLL */
-		// Cl is 
+		// Cl is lift
 		PlaneFM::AERO::dLdail = PlaneFM::AERO::Cl_delta_a20 + PlaneFM::AERO::Cl_delta_a20_lef * PlaneFM::leadingEdgeFlap_PCT;
 
 		PlaneFM::AERO::dLdR = (PlaneFM::wingSpan_FT / (2 * PlaneFM::totalVelocity_FPS)) * (PlaneFM::AERO::Clr + PlaneFM::AERO::Clr_delta_lef * PlaneFM::leadingEdgeFlap_PCT);
@@ -606,6 +647,7 @@ void ed_fm_set_atmosphere(
 {
 	PlaneFM::ambientTemperature_DegK = t;
 	PlaneFM::ambientDensity_KgPerM3 = ro;
+	PlaneFM::altitude_m = h;
 	PlaneFM::altitude_FT = h * PlaneFM::meterToFoot;
 	PlaneFM::ps_LBFT2 = p * 0.020885434273;
 }
@@ -632,6 +674,13 @@ void ed_fm_set_current_mass_state ( double mass,
 /*
 called before simulation to set up your environment for the next step
 */
+double ax_world = 0;
+double ay_world = 0;
+double az_world = 0;
+double vx_world = 0;
+double vy_world = 0;
+double vz_world = 0;
+
 void ed_fm_set_current_state (double ax,//linear acceleration component in world coordinate system
 							double ay,//linear acceleration component in world coordinate system
 							double az,//linear acceleration component in world coordinate system
@@ -653,8 +702,23 @@ void ed_fm_set_current_state (double ax,//linear acceleration component in world
 							double quaternion_w //orientation quaternion components in world coordinate system
 							)
 {
+	ax_world = ax;
 	PlaneFM::ay_world = ay;
+	az_world = az;
+	vx_world = vx;
+	vy_world = vy;
+	vz_world = vz;
+
+	PlaneFM::vspeed = vy -3.25; // Vertical speed, with minor adjustments to make autopilot work.
 }
+
+
+double ax_body = 0;
+double ay_body = 0;
+double az_body = 0;
+double vx_body = 0;
+double vy_body = 0;
+double vz_body = 0;
 
 void ed_fm_set_current_state_body_axis(	
 	double ax,//linear acceleration component in body coordinate system (meters/sec^2)
@@ -680,6 +744,12 @@ void ed_fm_set_current_state_body_axis(
 	)
 
 {
+	ax_body = ax;
+	ay_body = ay;
+	az_body = az;
+	vx_body = vx;
+	vy_body = vy;
+	vz_body = vz;
 
 	velocity_world_cs.x = vx;
 	velocity_world_cs.y = vy;
@@ -689,6 +759,8 @@ void ed_fm_set_current_state_body_axis(
 	wind.y = wind_vy;
 	wind.z = wind_vz;
 
+	pitch_angle = (pitch * radiansToDegrees)-1;
+	roll_angle = (roll * radiansToDegrees) - 1;
 	//-------------------------------
 	// Start of setting plane states
 	//-------------------------------
@@ -697,51 +769,8 @@ void ed_fm_set_current_state_body_axis(
 	PlaneFM::rollRate_RPS = omegax;   // When these values are multiplied, 
 	PlaneFM::yawRate_RPS = -omegay;  // Higher values mean less movement in that axis.
 	PlaneFM::pitchRate_RPS = omegaz;  // these act as limiters or dampers.
-
-	// "for" and "while" statements NEVER WORK!
-
-	if (alpha_DEG > 5 && pitchRate_RPS > 0) { PlaneFM::pitchRate_RPS = omegaz * (((alpha_DEG * alpha_DEG + 10000) / 180) - 54.5); }
-
-	/* This kind-of works sometimes, but I really need a better system.
 	
-	if (alpha_DEG >= 0.01)
-	{
-		PlaneFM::pitchRate_RPS = omegaz * (((alpha_DEG * alpha_DEG) / 500) + 1);
-	}
-	if (alpha_DEG <= -0.01)
-	{
-		PlaneFM::pitchRate_RPS = omegaz * (((alpha_DEG * alpha_DEG) / 500) + 1);
-	}
-	
-
-	// Positive roll rate is right or clockwise from the pilot's view.
-	if (PlaneFM::rollRate_RPS > 0.017453 && PlaneFM::FLIGHTCONTROLS::latStickInput > 0.95)
-	{
-		PlaneFM::rollRate_RPS = omegax - (omegax / 1.15);
-	}
-	if (PlaneFM::rollRate_RPS < -0.017453 && PlaneFM::FLIGHTCONTROLS::latStickInput < -0.95)
-	{
-		PlaneFM::rollRate_RPS = omegax - (omegax / 1.15);
-	}
-
-		// Anti-spin mechanism
-		// This is intended to make an unrecoverable death spiral impossible or at most very difficult to achieve.
-	
-	if (beta_DEG > 5.0 || beta_DEG <- 5.0)
-	{
-		PlaneFM::yawRate_RPS = -omegay * (1+((omegay) * (omegay) / omegay) * omegay * 10);
-	}
-	if (beta_DEG > 10.0)
-	{
-		PlaneFM::yawRate_RPS -= 100;
-		//PlaneFM::yawRate_RPS = -omegay * (omegay * omegay);
-	}
-	if (beta_DEG < -10.0)
-	{
-		PlaneFM::yawRate_RPS += 100;
-		//PlaneFM::yawRate_RPS = omegay * (omegay * omegay);
-	}
-	*/
+	if (alpha_DEG > 5 && pitchRate_RPS > 0 ) { PlaneFM::pitchRate_RPS = omegaz * (((alpha_DEG * alpha_DEG + 10000) / (180 + wing_damage)) - 54.5); }
 	
 	PlaneFM::az = ay;
 	PlaneFM::ay = az;
@@ -755,16 +784,6 @@ void ed_fm_set_command(int command, float value)	// Command = Command Index (See
 	switch (command)
 	{
 	//Flight contols
-	case EnginesOff:
-		PlaneFM::engineswitch = 0;
-		PlaneFM::throttleInput = -100 + limit((value), 0.0, 0.0);
-		break;
-
-	case EnginesOn:
-		PlaneFM::engineswitch = 1;
-		PlaneFM::throttleInput = limit((value), 0.0, 100.0);
-		break;
-
 		//Roll
 	case JoystickRoll:
 		PlaneFM::FLIGHTCONTROLS::latStickInput = limit(value, -1.0, 1.0);
@@ -798,7 +817,7 @@ void ed_fm_set_command(int command, float value)	// Command = Command Index (See
 		break;
 
 	case JoystickPitch:
-			PlaneFM::FLIGHTCONTROLS::longStickInput = limit(-value, -1.0, 1.0);
+		PlaneFM::FLIGHTCONTROLS::longStickInput = limit(-value, -1.0, 1.0);
 		break;
 
 	case PitchUp:
@@ -812,7 +831,7 @@ void ed_fm_set_command(int command, float value)	// Command = Command Index (See
 		break;
 
 	case PitchDown:
-			PlaneFM::FLIGHTCONTROLS::longStickInput = -value + ((alpha_DEG) / (alpha_DEG * alpha_DEG + 5 * 10) / alpha_DEG) *1250;
+		PlaneFM::FLIGHTCONTROLS::longStickInput = -value + ((alpha_DEG) / (alpha_DEG * alpha_DEG + 5 * 10) / alpha_DEG) *1250;
 		break;
 
 	case PitchDownStop:
@@ -851,7 +870,18 @@ void ed_fm_set_command(int command, float value)	// Command = Command Index (See
 		PlaneFM::yawTrim -= 0.05;
 		break;
 
-		//Throttle commands
+	//Engine and throttle commands
+	case EnginesOff:
+		PlaneFM::engineswitch = 0;
+		PlaneFM::throttleInput = -100 + limit((value), 0.0, 0.0);
+		break;
+
+	case EnginesOn:
+		PlaneFM::engineswitch = 1;
+		PlaneFM::throttleInput += 50;
+		PlaneFM::throttleInput = (limit((value), 0.0, 100.0));
+		break;
+
 	case JoystickThrottle:
 		if (PlaneFM::engineswitch = true)
 		{
@@ -954,12 +984,10 @@ void ed_fm_set_command(int command, float value)	// Command = Command Index (See
 		if (PlaneFM::ACTUATORS::gear_state > 0.5) PlaneFM::GearCommand = 0.0;
 		else if (PlaneFM::ACTUATORS::gear_state < 0.5) PlaneFM::GearCommand = 1.0;
 	case WheelBrakeOn:
-		PlaneFM::rolling_friction = 0.5;
-		PlaneFM::AERO::CxWheelFriction = 200.0;
+		PlaneFM::rolling_friction = 0.16;
 		break;
 	case WheelBrakeOff:
-		PlaneFM::rolling_friction = 0.05;
-		PlaneFM::AERO::CxWheelFriction = 0.0;
+		PlaneFM::rolling_friction = 0.015;
 		break;
 
 		//Other commands
@@ -967,6 +995,43 @@ void ed_fm_set_command(int command, float value)	// Command = Command Index (See
 		if (misc_state < 0.5) PlaneFM::misc_cmd = 1.0;
 		if (misc_state > 0.5) PlaneFM::misc_cmd = 0.0;
 		break;
+
+		//Autopilot
+	case autopilot_alt:
+
+		horiz_hold = 0;
+		altroll_hold = 0;
+
+		if (alt_hold < 0.5) alt_hold = 1;
+		else if (alt_hold > 0.5) alt_hold = 0;
+		break;
+
+	case autopilot_horiz:
+
+		alt_hold = 0;
+		altroll_hold = 0;
+
+		if (horiz_hold < 0.5) horiz_hold = 1;
+		else if (horiz_hold > 0.5) horiz_hold = 0;
+		break;
+
+	case autopilot_alt_roll:
+
+		alt_hold = 0;
+		horiz_hold = 0;
+
+		if (altroll_hold < 0.5) altroll_hold = 1;
+		else if (altroll_hold > 0.5) altroll_hold = 0;
+		break;
+
+	case autopilot_reset:
+
+		horiz_hold = 0;
+		alt_hold = 0;
+		altroll_hold = 0;
+
+		break;
+
 
 //	case FBW_override: // This doesn't work for now
 //		PlaneFM::FBW = 1;
@@ -1128,6 +1193,9 @@ void ed_fm_set_draw_args(EdDrawArgument* drawargs, size_t size) //The things tha
 	drawargs[15].f = (float)limit(-elev_pos / (mach + 1), -0.6, 0.6);
 	drawargs[16].f = (float)limit(-elev_pos / (mach + 1), -0.6, 0.6);
 
+	// Wing geometry
+	drawargs[7].f = (float)limit(((PlaneFM::mach - 0.7) / 0.3), 0.0, 1.0);
+
 	// Rudder(s)
 	drawargs[17].f = (float)limit((rudder_pos + (yawTrim / 10)), -0.75, 0.75);
 	drawargs[18].f = (float)limit((rudder_pos + (yawTrim / 10)), -0.75, 0.75);
@@ -1185,7 +1253,7 @@ double ed_fm_get_param(unsigned index)
 	switch (index)
 	{
 	case ED_FM_SUSPENSION_0_RELATIVE_BRAKE_MOMENT:
-		return 0.001;
+		return 0.0;
 	case ED_FM_SUSPENSION_1_RELATIVE_BRAKE_MOMENT:
 		return PlaneFM::rolling_friction;
 	case ED_FM_SUSPENSION_2_RELATIVE_BRAKE_MOMENT:
@@ -1270,9 +1338,11 @@ double ed_fm_get_param(unsigned index)
 			if (PlaneFM::engineswitch == false)
 				return limit((PlaneFM::throttleInput), 0.0, 0.0);
 			if (PlaneFM::engineswitch == true)
-				return limit(((((PlaneFM::throttle_state - 25) / 75) + 1) / 2), 0.5, 1.0);
+				return limit(((((PlaneFM::throttle_state - 25) / 75) + 1) / (2 + engine_damage)), 0.5, 1.0);
 				//return limit((PlaneFM::ACTUATORS::throttle_state / 100), 0.4, 1.05);
 			if (PlaneFM::internal_fuel < 5)
+				return limit((PlaneFM::throttleInput), 0.0, 0.001) + (PlaneFM::throttleInput - 100);
+			if (PlaneFM::engine_damage > 5)
 				return limit((PlaneFM::throttleInput), 0.0, 0.001) + (PlaneFM::throttleInput - 100);
 
 		case	ED_FM_ENGINE_1_TEMPERATURE:
@@ -1333,8 +1403,10 @@ double ed_fm_get_param(unsigned index)
 			if (PlaneFM::engineswitch == false)
 				return limit((PlaneFM::throttleInput), 0.0, 0.0);
 			if (PlaneFM::engineswitch == true)
-				return limit(((((PlaneFM::throttle_state - 25) / 75) + 1) / 2), 0.5, 1.0);
+				return limit(((((PlaneFM::throttle_state - 25) / 75) + 1) / (2 + engine_damage)), 0.5, 1.0);
 			if (PlaneFM::internal_fuel < 5)
+				return limit((PlaneFM::throttleInput), 0.0, 0.001) + (PlaneFM::throttleInput - 100);
+			if (PlaneFM::engine_damage > 5)
 				return limit((PlaneFM::throttleInput), 0.0, 0.001) + (PlaneFM::throttleInput - 100);
 
 		case	ED_FM_ENGINE_2_TEMPERATURE:
@@ -1383,45 +1455,40 @@ double ed_fm_get_param(unsigned index)
 	}
 	}
 	return 0;	
+
+	// Autopilot stuff, work in progress
+	switch (index)
+	{
+	case ED_FM_FC3_AUTOPILOT_STATUS:
+		return PlaneFM::alt_hold;
+	//case ED_FM_FC3_AUTOPILOT_FAILURE_ATTITUDE_STABILIZATION:
+	}
 }
 
 // This defines what is reset when the plane is destroyed or the player restarts or quits the mission.
 void ed_fm_release()
 {
 	PlaneFM::DeltaTime = 0;
-	ed_fm_set_current_state(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0); 
-	ed_fm_set_current_state_body_axis(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0); 
-	ed_fm_simulate; 
-	add_local_force(0, 0); 
-	add_local_moment(0);
-	common_moment.x = 0.0;
-	common_moment.y = 0.0;
-	common_moment.z = 0.0;
-	common_force.x = 0.0;
-	common_force.y = 0.0;
-	common_force.z = 0.0;
-	common_force.y = 0.0;
-	common_force.z = 0.0;
-	PlaneFM::inertia_Ix_KGM2;
-	PlaneFM::inertia_Iy_KGM2;
-	PlaneFM::inertia_Iz_KGM2;
+	PlaneFM::simInitialized = false;
+	PlaneFM::ACTUATORS::simInitialized = false;
+	PlaneFM::FLIGHTCONTROLS::simInitialized = false;
+
+	PlaneFM::engine_damage = 0;
+	PlaneFM::Lwing_damage = 0;
+	PlaneFM::Rwing_damage = 0;
+	PlaneFM::tail_damage = 0;
+	PlaneFM::cockpit_damage = 0;
+	//FIX INERTIA!!!!
+
 	PlaneFM::pedInput = 0;
 	PlaneFM::throttleInput = 0.0;
-	PlaneFM::totalVelocity_FPS = 0;
-	PlaneFM::alpha_DEG = 0;
-	PlaneFM::beta_DEG = 0;
-	PlaneFM::rollRate_RPS = 0;
-	PlaneFM::pitchRate_RPS = 0;
-	PlaneFM::yawRate_RPS = 0;
 	PlaneFM::elevator_DEG = 0;
 	PlaneFM::aileron_DEG = 0;
 	PlaneFM::rudder_DEG = 0;
 	PlaneFM::elevator_DEG_commanded = 0;
 	PlaneFM::rudder_DEG_commanded = 0;
 	PlaneFM::throttle_state = 0;
-	PlaneFM::az = 0;
-	PlaneFM::ay = 0;
-	PlaneFM::rolling_friction = 0.05;
+	PlaneFM::rolling_friction = 0.015;
 	PlaneFM::WheelBrakeCommand = 0.0;
 	PlaneFM::pitchTrim = 0.0;
 	PlaneFM::rollTrim = 0.0;
@@ -1433,8 +1500,9 @@ void ed_fm_release()
 	PlaneFM::misc_cmd = 0.0;
 	PlaneFM::misc_state = 0.0;
 
-	PlaneFM::FLIGHTCONTROLS::latStickInput = 0;
-	PlaneFM::FLIGHTCONTROLS::longStickInput = 0;
+	PlaneFM::alt_hold = 0;
+	PlaneFM::horiz_hold = 0;
+	PlaneFM::alt_hold = 0;
 
 	PlaneFM::ACTUATORS::flapPosition_DEG = 0.0;
 	PlaneFM::ACTUATORS::flapRate_DEGPERSEC = 0.0;
@@ -1445,11 +1513,26 @@ void ed_fm_release()
 	PlaneFM::FLIGHTCONTROLS::latStickInput = 0.0;
 	PlaneFM::FLIGHTCONTROLS::longStickInput = 0.0;
 	PlaneFM::FLIGHTCONTROLS::longStickForce = 0.0;
+	
 }
 
 // Conditions to make the screen shake in first-person view. This is very useful for debugging.
 double ed_fm_get_shake_amplitude() 
 {
+	if (Rwing_damage >= 10 || Lwing_damage >= 10)
+		return 10;
+
+	if (cockpit_damage > 1)
+	{ return 2; }
+
+	if (engine_damage > 1)
+	{
+		return engine_damage;
+	}
+
+	if (PlaneFM::az > 80.0)  // If the plane is under 7 gs or more, the screen shakes.
+	{return (PlaneFM::az / 150);}
+
 	if (PlaneFM::ACTUATORS::airbrake_state > 0.2 && PlaneFM::mach >= 0.1)
 	{
 		return PlaneFM::ACTUATORS::airbrake_state * (mach / 6);
@@ -1474,7 +1557,7 @@ double ed_fm_get_shake_amplitude()
 
 // What parameters should change when easy flight mode is on/off?
 void ed_fm_set_easy_flight(bool value) 
-{} // Nothing here yet. Default behaviour for this FM mimics "game" flight mode.
+{} // Nothing here yet. Flight behaviour for this FM mimics "game" flight mode.
 
 // This defines what happens when the unlimited fuel option is on or off.
 void ed_fm_unlimited_fuel(bool value) 
@@ -1492,7 +1575,7 @@ void ed_fm_cold_start()
 	PlaneFM::flap_command = 0.0;
 	PlaneFM::flaps = 0.0;
 	PlaneFM::engineswitch = false;
-	PlaneFM::rolling_friction = 0.05;
+	PlaneFM::rolling_friction = 0.015;
 } 
 
 // What parameters should be set to what in a hot start on the ground?
@@ -1506,7 +1589,7 @@ void ed_fm_hot_start()
 	PlaneFM::flap_command = 0.0;
 	PlaneFM::flaps = 0.0;
 	PlaneFM::engineswitch = true;
-	PlaneFM::rolling_friction = 0.05;
+	PlaneFM::rolling_friction = 0.015;
 }
 
 // What parameters should be set to what in a hot start in the air?
@@ -1514,29 +1597,59 @@ void ed_fm_hot_start_in_air()
 {
 	PlaneFM::gearDown = 0;
 	PlaneFM::GearCommand = 0;
-	PlaneFM::throttleInput = 75.0;
-	PlaneFM::throttle_state = 75.0;
+	PlaneFM::throttleInput = 77.5;
+	PlaneFM::throttle_state = 77.5;
 	PlaneFM::WheelBrakeCommand = 0.0;
 	PlaneFM::flap_command = 0.0;
 	PlaneFM::flaps = 0.0;
 	PlaneFM::engineswitch = true;
-	PlaneFM::rolling_friction = 0.05;
+	PlaneFM::rolling_friction = 0.015;
 }
 
-/*  Damage stuff, still a work in progress.
+//What should be fixed when repairs are complete?
+void ed_fm_repair()
+{
+	engine_damage = 0;
+	Lwing_damage = 0;
+	Rwing_damage = 0;
+	tail_damage = 0;
+	cockpit_damage = 0;
+}
+
+void ed_fm_set_immortal(bool value)
+{
+	PlaneFM::param_class.param_stuff::invincible(1 - value);
+}
+
+// Damage stuff, still a work in progress.
 void ed_fm_on_damage(int Element, double element_integrity_factor)
 {
-	if (Element >= 0 && Element < 111)
-	{
-		elementIntegrity[Element] = element_integrity_factor;
+	if (PlaneFM::param_class.invincible_value = 1)
+	{ 
+	if (Element == 103 || Element == 104 || Element == 11 || Element == 12) // Engines 1 and 2
+	{ engine_damage += element_integrity_factor;}
+
+	if (Element == 23 || Element == 25 || Element == 29 || Element == 35) // Left wing damage
+	{ Lwing_damage += (element_integrity_factor);}
+
+	if (Element == 24 || Element == 26 || Element == 30 || Element == 36) // Right wing damage
+	{ Rwing_damage += (element_integrity_factor);}
+
+	if (Element >= 53 && Element <= 58 || Element == 100) // Tail damage
+	{ tail_damage += (element_integrity_factor);}
+
+	if (Element >= 0 && Element <= 6) // Cockpit/Avionics damage
+	{ cockpit_damage += (element_integrity_factor / 10);}
 	}
-
-	if (isImmortal == false)
+	else
 	{
-
+		engine_damage = 0;
+		Lwing_damage = 0;
+		Rwing_damage = 0;
+		tail_damage = 0;
+		cockpit_damage = 0;
 	}
 }
-*/
 
 double test()
 {
