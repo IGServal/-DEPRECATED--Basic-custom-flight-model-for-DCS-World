@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
@@ -13,7 +13,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="UtilityFunctions.h" />
-    <ClInclude Include="Aerodynamics\PlaneFMAero.h">
+    <ClInclude Include="Aerodynamics\PlaneFMAero.h"> 
       <Filter>Aerodynamics</Filter>
     </ClInclude>
     <ClInclude Include="Aerodynamics\PlaneFMAeroData.h">
@@ -33,9 +33,6 @@
     </ClInclude>
     <ClInclude Include="include\FM\wHumanCustomPhysicsAPI.h" />
     <ClInclude Include="Inputs.h" />
-    <ClInclude Include="Engine\FuelSystem.h">
-      <Filter>Engine</Filter>
-    </ClInclude>
     <ClInclude Include="param_functions.h" />
     <ClInclude Include="Actuators\PlaneFMActuators.h">
       <Filter>Actuators</Filter>
