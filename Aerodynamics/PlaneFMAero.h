@@ -110,6 +110,7 @@ namespace PlaneFM
 			x[2] = dele;
 
 			return interpn(X,_CxData,x,ndinfo);
+			free(X);
 		}/* End of function(...) */
 
 		double _Cz(double alpha,double beta, double dele){
@@ -141,6 +142,7 @@ namespace PlaneFM
 			x[1] = beta;
 			x[2] = dele;
 			return interpn(X,_CzData,x,ndinfo);
+			free(X);
 		}/* End of function(...) */
 
 		double _Cm(double alpha,double beta,double dele){
@@ -173,6 +175,7 @@ namespace PlaneFM
 			x[1] = beta;
 			x[2] = dele;
 			return	interpn(X,_CmData,x,ndinfo);
+			free(X);
 		}/* End of function(...) */
 
 		double _Cy(double alpha,double beta){
@@ -202,6 +205,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return	interpn(X,_CyData,x,ndinfo);
+			free(X);
 		}/* End of function(...) */
 
 		double _Cn(double alpha, double beta, double dele){
@@ -234,6 +238,7 @@ namespace PlaneFM
 			x[1] = beta;
 			x[2] = dele;
 			return (interpn(X,_CnData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 		double _Cl(double alpha, double beta,double dele){
@@ -265,6 +270,7 @@ namespace PlaneFM
 			x[1] = beta;
 			x[2] = dele;
 			return (interpn(X,_ClData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 		double _Cx_lef(double alpha,double beta){	
@@ -299,6 +305,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return	interpn(X,_Cx_lefData,x,ndinfo);
+			free(X);
 		}/* End of function(...) */
 
 		double _Cz_lef(double alpha,double beta){
@@ -333,6 +340,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return	interpn(X,_Cz_lefData,x,ndinfo);
+			free(X);
 		}/* End of function(...) */
 
 		double _Cm_lef(double alpha,double beta){
@@ -366,6 +374,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return	interpn(X,_Cm_lefData,x,ndinfo);
+			free(X);
 		}/* End of function(...) */
 
 		double _Cy_lef(double alpha,double beta){
@@ -399,6 +408,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return	interpn(X,_Cy_lefData,x,ndinfo);
+			free(X);
 		}/* End of function(...) */
 
 		double _Cn_lef(double alpha,double beta){
@@ -432,6 +442,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return (interpn(X,_Cn_lefData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 		double _Cl_lef(double alpha,double beta){
@@ -490,6 +501,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_CxqData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -517,6 +529,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_CzqData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -544,6 +557,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_CmqData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -571,6 +585,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_CypData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -598,6 +613,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_CyrData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -625,6 +641,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_CnrData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -652,6 +669,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_CnpData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -679,6 +697,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_ClpData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -706,6 +725,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_ClrData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -737,6 +757,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_delta_CXq_lefData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -768,6 +789,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_delta_CYr_lefData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -799,6 +821,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_delta_CYp_lefData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -830,6 +853,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_delta_CZq_lefData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -861,6 +885,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_delta_CLr_lefData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -892,6 +917,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_delta_CLp_lefData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -923,6 +949,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_delta_CMq_lefData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -954,6 +981,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_delta_CNr_lefData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -985,6 +1013,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_delta_CNp_lefData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -1015,6 +1044,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return (interpn(X,_Cy_r30Data,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -1046,6 +1076,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return (interpn(X,_Cn_r30Data,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -1076,6 +1107,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return (interpn(X,_Cl_r30Data,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -1106,6 +1138,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return (interpn(X,_Cy_a20Data,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -1140,6 +1173,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return (interpn(X,_Cy_a20_lefData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -1171,6 +1205,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return (interpn(X,_Cn_a20Data,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -1205,6 +1240,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return (interpn(X,_Cn_a20_lefData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -1234,6 +1270,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return (interpn(X,_Cl_a20Data,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -1269,6 +1306,7 @@ namespace PlaneFM
 			x[0] = alpha;
 			x[1] = beta;
 			return (interpn(X,_Cl_a20_lefData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -1296,6 +1334,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_delta_CNbetaData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -1323,6 +1362,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_delta_CLbetaData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -1350,6 +1390,7 @@ namespace PlaneFM
 
 			x[0] = alpha;
 			return (interpn(X,_delta_CmData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 
@@ -1377,6 +1418,7 @@ namespace PlaneFM
 
 			x[0] = el;
 			return (interpn(X,_eta_elData,x,ndinfo));
+			free(X);
 		}/* End of function(...) */
 
 

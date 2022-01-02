@@ -21,7 +21,7 @@ extern "C"
 	ED_FM_TEMPLATE_API void ed_fm_simulate(double dt);
 
 	ED_FM_TEMPLATE_API void ed_fm_set_atmosphere(double h,//altitude above sea level
-							 double t,//current atmosphere temperature , Kelwins
+							 double t,//current atmosphere temperature;, Kelvin
 							 double a,//speed of sound
 							 double ro,// atmosphere density
 							 double p,// atmosphere pressure

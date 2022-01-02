@@ -54,21 +54,21 @@ namespace PlaneFM
 				return aileronPosition_DEG;
 			}
 
-			aileronRate_DEGPERSEC = 15.0 * (roll_cmd - aileronPosition_DEG);
+			aileronRate_DEGPERSEC = 20.0 * (roll_cmd - aileronPosition_DEG);
 
-			aileronRate_DEGPERSEC = limit(aileronRate_DEGPERSEC, -20.0, 20.0);
+			aileronRate_DEGPERSEC = limit(aileronRate_DEGPERSEC, -25.5, 25.5);
 
 			aileronPosition_DEG += (aileronRate_DEGPERSEC * frameTime);
 
-			aileronPosition_DEG = limit(aileronPosition_DEG, -20.0, 20.0);
+			aileronPosition_DEG = limit(aileronPosition_DEG, -15.0, 15.0);
 
 			return aileronPosition_DEG;
 		}
 
-		float	rudderPosition_DEG = 0.0;
-		float	rudderRate_DEGPERSEC = 0.0;
+		double	rudderPosition_DEG = 0.0;
+		double	rudderRate_DEGPERSEC = 0.0;
 
-		float  rudder_actuator(float rudderCommanded_DEG, double frameTime)
+		double  rudder_actuator(double rudderCommanded_DEG, double frameTime)
 		{
 			if (!simInitialized)
 			{
@@ -90,16 +90,28 @@ namespace PlaneFM
 		double  throttle_actuator(double throttleInput, double frameTime)
 		{
 			if (!simInitialized)
-					{
-						throttle_state = throttleInput;
-						return throttle_state;
-					}
-					throttle_rate = 20.2 * (throttleInput - throttle_state);
-					throttle_rate = limit(throttle_rate, -25.0, 20.0);
-					throttle_state += (throttle_rate * frameTime);
-					throttle_state = limit(throttle_state, 0.0, 100.0);
+			{
+				throttle_state = throttleInput;
+				return throttle_state;
+			}
+			if (throttle_state < 90 && throttle_state > 75)
+			{
+				throttle_rate = 20.2 * (throttleInput - throttle_state);
+				throttle_rate = limit(throttle_rate, -17.5, 15.0);
+				throttle_state += (throttle_rate * frameTime);
+				throttle_state = limit(throttle_state, 0.0, 100.0);
+			}
+			else
+			{
+				throttle_rate = 20.2 * (throttleInput - throttle_state);
+				throttle_rate = limit(throttle_rate, -25.0, 20.0);
+				throttle_state += (throttle_rate * frameTime);
+				throttle_state = limit(throttle_state, 0.0, 100.0);
+			}
 			return throttle_state;
+
 		}
+
 		double  gear_actuator(double GearCommand, double frameTime)
 		{
 			if (!simInitialized)
@@ -129,10 +141,10 @@ namespace PlaneFM
 			return flapPosition_DEG;
 		}
 
-		float elev_pos = 0.0;
-		float elev_rate = 0.0;
+		double elev_pos = 0.0;
+		double elev_rate = 0.0;
 
-		float  elev_actuator(float longStickInput, double frameTime)
+		double  elev_actuator(double longStickInput, double frameTime)
 		{
 			if (!simInitialized)
 			{
@@ -163,10 +175,10 @@ namespace PlaneFM
 			return airbrake_state;
 		}
 
-		float misc_pos = 0.0;
-		float misc_rate = 0.0;
+		double misc_pos = 0.0;
+		double misc_rate = 0.0;
 
-		float  misc_actuator(float misc_cmd, double frameTime)
+		double  misc_actuator(double misc_cmd, double frameTime)
 		{
 			if (!simInitialized)
 			{
@@ -180,8 +192,57 @@ namespace PlaneFM
 
 			return misc_pos;
 		}
-	};
 
+		/*	Test acceleration stuff
+		double rollacc_pos = 0.0;
+		double rollacc_speed = 0.0;
+
+		double roll_accelerator(double test_cmd, double frameTime)
+		{
+			if (!simInitialized)
+			{
+				rollacc_pos = test_cmd;
+				return rollacc_pos;
+			}
+
+			rollacc_speed = 10.0 * (test_cmd - rollacc_pos);
+
+			rollacc_speed = limit(rollacc_speed, -50, 0.5);
+
+			rollacc_pos += (rollacc_speed * frameTime);
+
+			rollacc_pos = limit(rollacc_pos, 0.0, 10.0);
+
+			return rollacc_pos;
+		}*/
+
+		double starter_state = 0.0;
+		double starter_rate = 0.0;
+		// I wanted to move this to PlaneFMEngine.h but it didn't work.
+		double  engine_starter(double starter_command, double frameTime) 
+		{
+			if (!simInitialized)
+			{
+				starter_state = starter_command;
+				return starter_state;
+			}
+			if (starter_state < 0.02)
+			{
+				starter_rate = 20.2 * (starter_command - starter_state);
+				starter_rate = limit(starter_rate, -0.010, 0.005);
+				starter_state += (starter_rate * frameTime);
+				starter_state = limit(starter_state, 0.0, 100.0);
+			}
+			else
+			{
+				starter_rate = 20.2 * (starter_command - starter_state);
+				starter_rate = limit(starter_rate, -0.018, 0.0155);
+				starter_state += (starter_rate * frameTime);
+				starter_state = limit(starter_state, 0.0, 100.0);
+			}
+			return starter_state;
+		}
+	};
 
 }
 

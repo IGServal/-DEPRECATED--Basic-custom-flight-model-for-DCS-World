@@ -1,7 +1,7 @@
 //--------------------------------------------------------------------------
 // External Flight Model for DCS World
 // 
-// Author: Aiyke/ SÃ©rvalpilot
+// Author: Aiyke/ Sérvalpilot
 // Original author: CptSmiley 
 // You can get the original source code at https://forums.eagle.ru/topic/79927-high-fidelity-flight-dynamics-and-techacademic-initial-demonstration/
 //

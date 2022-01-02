@@ -4,11 +4,20 @@ enum InputCommands
 {
 	// commands from command_defs.lua
 
-	//general controls
+	//General controls
 	resetTrim = 97,
-	FBW_override = 121,
+	FBW_switch = 121, //Toggle
+
+	//Engine commands
 	EnginesOn = 309,
+	LeftEngineOn = 311,
+	RightEngineOn = 312,
+	/* left on is 311, right on is 312*/
+
 	EnginesOff = 310,
+	LeftEngineOff = 313,
+	RightEngineOff = 314,
+	/* left off is 313, right off is 314*/
 
 	//Pitch
 	PitchUp = 195,
@@ -71,21 +80,21 @@ enum InputCommands
 	JoystickThrottle = 2004,
 
 	// modes
-	nav	= 105,
-	bvr	= 106,
-	vs	= 107,
+	nav		= 105,
+	bvr		= 106,
+	vs		= 107,
 	bore	= 108,
 	helm	= 109,
-	fi0	= 110,
-	a2g	= 111,
-	gun	= 113,
+	fi0		= 110,
+	a2g		= 111,
+	gun		= 113,
 
 	// autopilot modes
 	//autopilot = 62, // [A]
-	//route_follow = 429,// [Left alt + 6] 
+	//route_follow = 429,// [Left alt + 6]
 	autopilot_horiz = 62,  // [A]
 	autopilot_alt = 59,  // [H]
-	autopilot_alt_roll = 387,  // [Left alt + 6]
+	autopilot_alt_roll = 387,  // [H]
 	autopilot_reset = 408,  // [Left alt + 9]
 
 	Reserved // placeholder

@@ -10,6 +10,7 @@ namespace PlaneFM
 		double dt;
 		double throttlePosition = 0;
 		double throttlePositionLastTime = 0;
+		double engine_damage;
 		double fuel; 
 	
 		double engine_dynamics(double throttleInput, double mach, double alt, double frameTime)
@@ -94,8 +95,8 @@ namespace PlaneFM
 				{
 					thrust = Tmil + (Tmax - Tmil) * (power3 - 50.0) / 50.0;
 				}
-
-				thrust = limit(thrust, 0.0, 129000.0);
+				//thrust = limit(thrust, 0.0, 129000.0);
+				thrust = limit(thrust, 0.0, 150000.0)/ (1 + engine_damage * 100);
 
 				return thrust;
 		}
